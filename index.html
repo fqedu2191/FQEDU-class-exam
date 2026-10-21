@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#f6f7fb" />
   <title>本週挑戰｜作答系統</title>
+  <!-- 版本：2026-10-21 v3（市場直向排列） -->
+  <meta http-equiv="Cache-Control" content="no-cache" />
   <style>
     :root {
       --radius: 14px;
@@ -78,15 +80,12 @@
       font-size: 16px; line-height: 1.75;
     }
 
-    /* 五個市場：任何寬度都一列一個，名稱在左、按鈕在右 */
-    .markets { display: flex; flex-direction: column; margin-top: 16px; }
-    .market {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      padding: 12px 0; border-bottom: 1px solid #f0f1f4;
-    }
+    /* 五個市場：任何寬度都由上往下排，名稱一行、正負按鈕在下一行 */
+    .markets { display: block; margin-top: 16px; }
+    .market { display: block; padding: 12px 0; border-bottom: 1px solid #f0f1f4; }
     .market:last-child { border-bottom: 0; }
-    .market .field-label { margin: 0; flex: 0 0 auto; min-width: 4.5em; }
-    .radio-group { display: flex; gap: 8px; flex: 1 1 auto; max-width: 320px; }
+    .market .field-label { display: block; margin: 0 0 8px; }
+    .radio-group { display: flex; gap: 10px; max-width: 420px; }
     .chip {
       flex: 1 1 0;
       display: inline-flex; align-items: center; justify-content: center;
