@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>本週挑戰｜老師後台</title>
+<style>
+  :root {
+    --bg: #f6f7fb; --card: #fff; --ink: #111827; --text: #222; --muted: #667085;
+    --line: #e5e7eb; --soft: #f3f4f6;
+    --ok: #166534; --ok-bg: #effaf1; --bad: #a8071a; --bad-bg: #fff1f0;
+    --warn: #8a5a00; --warn-bg: #fff8e6; --warn-line: #ffe1a1;
+    --accent: #2563eb;
+    --radius: 14px; --shadow: 0 10px 30px rgba(0,0,0,.06);
+    --gutter: clamp(12px, 3vw, 28px);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: var(--gutter); background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    line-height: 1.5; font-size: 15px;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  h1 { margin: 0; font-size: clamp(20px, 4vw, 26px); color: var(--ink); }
+  .sub { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+  .top { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    min-height: 40px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px;
+    background: #fff; color: var(--ink); font-size: 14px; font-weight: 600; cursor: pointer;
+    text-decoration: none; white-space: nowrap;
+  }
+  .btn:hover { background: var(--soft); }
+  .btn.primary { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .btn.danger { color: var(--bad); border-color: #ffcdc7; }
+  .btn.sm { min-height: 32px; padding: 4px 10px; font-size: 13px; }
+  .btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: clamp(14px, 3vw, 20px); }
+
+  .banner { margin-bottom: 14px; padding: 12px 14px; border-radius: 10px; background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn); }
+  .banner b { color: #5c3d00; }
+  .banner ul { margin: 6px 0 10px; padding-left: 20px; font-size: 13px; }
+
+  .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; margin-bottom: 14px; }
+  .filters label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  select, input, textarea {
+    width: 100%; min-height: 42px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px;
+    font-size: 16px; background: #fff; color: var(--text); font-family: inherit;
+  }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 10px; margin-bottom: 14px; }
+  .stat { background: #fff; border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow); }
+  .stat .k { font-size: 12px; color: var(--muted); }
+  .stat .v { font-size: 24px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .stat .h { font-size: 12px; color: var(--muted); }
+
+  .tabs { display: flex; gap: 4px; overflow-x: auto; margin-bottom: 10px; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 0 0 auto; padding: 8px 14px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; }
+  .tab[aria-selected="true"] { background: var(--ink); color: #fff; }
+
+  .panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .panel-head h2 { margin: 0; font-size: 16px; color: var(--ink); }
+  .hint { font-size: 12px; color: var(--muted); }
+  .empty { padding: 32px 12px; text-align: center; color: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; background: #fafbfc; position: sticky; top: 0; z-index: 1; }
+  tbody tr:hover { background: #fafbff; }
+  td.num, th.num { text-align: right; }
+  td.c, th.c { text-align: center; }
+  .rank { display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 50%; background: var(--soft); font-weight: 700; }
+  .rank.r1 { background: #fde68a; } .rank.r2 { background: #e5e7eb; } .rank.r3 { background: #fed7aa; }
+  .sign { display: inline-block; min-width: 26px; padding: 1px 6px; border-radius: 6px; text-align: center; font-weight: 700; }
+  .sign.ok { background: var(--ok-bg); color: var(--ok); }
+  .sign.bad { background: var(--bad-bg); color: var(--bad); }
+  .sign.na { color: var(--muted); }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; background: var(--soft); color: var(--muted); }
+  .tag.warn { background: var(--warn-bg); color: var(--warn); }
+  .muted-row td { color: #9ca3af; }
+  .acts { display: flex; gap: 6px; justify-content: flex-end; }
+  .qtext { max-width: 420px; font-size: 13px; color: #374151; }
+  .qtext details summary { cursor: pointer; list-style: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qtext details[open] summary { white-space: normal; }
+  .qtext details summary::-webkit-details-marker { display: none; }
+  .bar { position: relative; height: 8px; border-radius: 4px; background: var(--soft); min-width: 60px; overflow: hidden; }
+  .bar > i { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 4px; }
+  .pct { font-size: 12px; color: var(--muted); }
+
+  .scroll { overflow: auto; max-height: 70vh; border: 1px solid var(--line); border-radius: 10px; }
+  .scroll table th, .scroll table td { white-space: nowrap; }
+  .matrix th:first-child, .matrix td:first-child { position: sticky; left: 0; background: #fff; z-index: 2; font-weight: 600; }
+  .matrix thead th:first-child { z-index: 3; background: #fafbfc; }
+  .matrix td.cell { text-align: center; min-width: 44px; }
+
+  .more { display: flex; justify-content: center; margin-top: 12px; }
+
+  dialog { border: 0; border-radius: var(--radius); padding: 0; width: min(440px, calc(100vw - 24px)); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  dialog::backdrop { background: rgba(17,24,39,.45); }
+  .dlg { padding: 20px; }
+  .dlg h3 { margin: 0 0 4px; font-size: 18px; color: var(--ink); }
+  .dlg .form { display: grid; gap: 10px; margin: 14px 0; }
+  .dlg .form label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .dlg .foot { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+  .dlg .msg { white-space: pre-wrap; margin: 10px 0 16px; color: #374151; }
+
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 50; max-width: calc(100vw - 24px); }
+  #toast .t { padding: 10px 16px; border-radius: 10px; box-shadow: var(--shadow); font-weight: 600; }
+  #toast .t.ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #b7ebc6; }
+  #toast .t.err { background: var(--bad-bg); color: var(--bad); border: 1px solid #ffcdc7; }
+
+  #loading { position: fixed; inset: 0; background: rgba(255,255,255,.65); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 10px; z-index: 40; }
+  #loading.on { display: flex; }
+  .spin { width: 42px; height: 42px; border: 5px solid #cbd5e1; border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* 手機：排行榜與明細改成卡片 */
+  @media (max-width: 720px) {
+    table.cards thead { display: none; }
+    table.cards, table.cards tbody, table.cards tr, table.cards td { display: block; width: 100%; }
+    table.cards tr { border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 10px; background: #fff; }
+    table.cards td { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 0; padding: 5px 0; text-align: right; }
+    table.cards td::before { content: attr(data-label); color: var(--muted); font-size: 13px; text-align: left; flex: 0 0 auto; }
+    table.cards td.full { display: block; text-align: left; }
+    table.cards td.full::before { display: block; margin-bottom: 4px; }
+    table.cards td.num, table.cards td.c { text-align: right; }
+    .acts { justify-content: flex-end; }
+    .qtext { max-width: none; }
+    .top .toolbar { width: 100%; }
+    .top .toolbar .btn { flex: 1 1 auto; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>本週挑戰｜老師後台</h1>
+      <p class="sub" id="meta">載入中…</p>
+    </div>
+    <div class="toolbar">
+      <button class="btn" id="btnRefresh" type="button">↻ 重新整理</button>
+      <button class="btn" id="btnAdd" type="button">＋ 補登成績</button>
+      <button class="btn" id="btnRegrade" type="button">重新批改</button>
+      <a class="btn" id="lnkSheet" target="_blank" rel="noopener">開啟試算表 ↗</a>
+    </div>
+  </header>
+
+  <div id="banner"></div>
+
+  <section class="filters">
+    <label>組別<select id="fGroup"></select></label>
+    <label>題號<select id="fQno"></select></label>
+    <label>重複作答的計分方式
+      <select id="fMode">
+        <option value="all">全部加總（與排行榜 API 相同）</option>
+        <option value="first">同組同題只計第一次</option>
+        <option value="max">同組同題只計最高分</option>
+      </select>
+    </label>
+  </section>
+
+  <section class="stats" id="stats"></section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="rank" aria-selected="true">排行榜</button>
+    <button class="tab" role="tab" data-tab="detail" aria-selected="false">作答明細</button>
+    <button class="tab" role="tab" data-tab="question" aria-selected="false">題目分析</button>
+    <button class="tab" role="tab" data-tab="matrix" aria-selected="false">成績總表</button>
+  </nav>
+
+  <main class="card" id="panel"><div class="empty">載入中…</div></main>
+</div>
+
+<dialog id="dlgForm">
+  <form class="dlg" method="dialog" id="form">
+    <h3 id="formTitle">修改作答</h3>
+    <div class="hint" id="formHint"></div>
+    <div class="form">
+      <label>組別<input id="inGroup" inputmode="numeric" required></label>
+      <label>題號<input id="inQno" inputmode="numeric" required></label>
+      <label>分數<input id="inScore" type="number" step="any" inputmode="decimal" required></label>
+      <label>備註<input id="inNote" placeholder="可留空"></label>
+    </div>
+    <div class="foot">
+      <button class="btn" value="cancel" formnovalidate>取消</button>
+      <button class="btn primary" value="ok" id="formOk">儲存</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgConfirm">
+  <form class="dlg" method="dialog">
+    <h3 id="cfTitle">確認</h3>
+    <div class="msg" id="cfMsg"></div>
+    <div class="foot">
+      <button class="btn" value="cancel">取消</button>
+      <button class="btn primary" value="ok" id="cfOk">確定</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" aria-live="polite"></div>
+<div id="loading"><div class="spin"></div><div id="loadingMsg">處理中…</div></div>
+
+<script>
+const MARKETS = [['STOCK','股市'],['BOND','債市'],['FX','美元指數'],['COM','原物料'],['RE','房地產']];
+const PAGE = 200;
+let DATA = null, TAB = 'rank', detailLimit = PAGE;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtTime = ms => ms == null ? '—' : new Date(ms).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+const fmtFull = ms => ms == null ? '—' : new Date(ms).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
+const fmtNum = (n, d = 1) => n == null || !isFinite(n) ? '—' : (Math.round(n * 10 ** d) / 10 ** d).toString();
+const natCmp = (a, b) => {
+  const na = Number(a), nb = Number(b);
+  if (a !== '' && b !== '' && isFinite(na) && isFinite(nb)) return na - nb;
+  return String(a).localeCompare(String(b), 'zh-Hant');
+};
+const maxScore = () => 5 * (DATA?.pointsPerCorrect || 1);
+
+/* ---------- 與後端溝通 ---------- */
+function call(fn, ...args) {
+  return new Promise((resolve, reject) => {
+    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args);
+  });
+}
+async function run(msg, fn, ...args) {
+  loading(true, msg);
+  try { return await call(fn, ...args); }
+  catch (e) { toast((e && e.message) || String(e), false); throw e; }
+  finally { loading(false); }
+}
+function loading(on, msg) { $('#loading').classList.toggle('on', on); if (msg) $('#loadingMsg').textContent = msg; }
+let toastTimer;
+function toast(text, ok = true) {
+  $('#toast').innerHTML = `<div class="t ${ok ? 'ok' : 'err'}">${esc(text)}</div>`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('#toast').innerHTML = '', ok ? 3000 : 7000);
+}
+function confirmBox(title, msg, okText = '確定', danger = false) {
+  return new Promise(resolve => {
+    const d = $('#dlgConfirm');
+    $('#cfTitle').textContent = title;
+    $('#cfMsg').textContent = msg;
+    $('#cfOk').textContent = okText;
+    $('#cfOk').className = 'btn ' + (danger ? 'danger' : 'primary');
+    d.returnValue = '';
+    d.addEventListener('close', () => resolve(d.returnValue === 'ok'), { once: true });
+    d.showModal();
+  });
+}
+
+/* ---------- 載入 ---------- */
+async function load() {
+  try { setData(await run('載入資料…', 'getDashboardData')); } catch (e) {
+    if (!DATA) $('#panel').innerHTML = `<div class="empty">無法載入資料：${esc(e.message || e)}</div>`;
+  }
+}
+function setData(d) {
+  DATA = d;
+  DATA.keyMap = {};
+  (d.answerKey || []).forEach(k => { if (!DATA.keyMap[k.qno]) DATA.keyMap[k.qno] = k; });
+  $('#meta').textContent = `資料來源：${d.sheetName}｜更新於 ${fmtFull(d.generatedAt)}`;
+  $('#lnkSheet').href = d.sheetUrl;
+  fillFilters();
+  render();
+}
+function fillFilters() {
+  const keep = (sel, values, allText) => {
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">${allText}</option>` + values.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    sel.value = values.includes(cur) ? cur : '';
+  };
+  const groups = [...new Set(DATA.responses.map(r => r.group))].sort(natCmp);
+  const qnos = [...new Set(DATA.responses.map(r => r.qno))].sort(natCmp);
+  keep($('#fGroup'), groups, `全部組別（${groups.length}）`);
+  keep($('#fQno'), qnos, `全部題號（${qnos.length}）`);
+  [...$('#fGroup').options].slice(1).forEach(o => o.textContent = `第 ${o.value} 組`);
+  [...$('#fQno').options].slice(1).forEach(o => o.textContent = `第 ${o.value} 題`);
+}
+
+/* ---------- 計算 ---------- */
+// 依計分方式挑出「計分的作答」，回傳計分的列與被計分的 row 集合
+function effective(rows, mode) {
+  if (mode === 'all') return { eff: rows, counted: new Set(rows.map(r => r.row)) };
+  const best = new Map();
+  for (const r of rows) {
+    const k = r.group + '|' + r.qno, b = best.get(k);
+    const t = r.ts ?? Infinity, bt = b ? (b.ts ?? Infinity) : 0;
+    if (!b) { best.set(k, r); continue; }
+    if (mode === 'first' && (t < bt || (t === bt && r.row < b.row))) best.set(k, r);
+    if (mode === 'max' && ((r.score ?? -Infinity) > (b.score ?? -Infinity) || ((r.score ?? -1) === (b.score ?? -1) && t < bt))) best.set(k, r);
+  }
+  const eff = [...best.values()];
+  return { eff, counted: new Set(eff.map(r => r.row)) };
+}
+function view() {
+  const g = $('#fGroup').value, q = $('#fQno').value, mode = $('#fMode').value;
+  const byQ = DATA.responses.filter(r => !q || r.qno === q);           // 排名要在全部組別間比較
+  const rows = byQ.filter(r => !g || r.group === g);
+  const { eff, counted } = effective(rows, mode);
+  const { eff: effAllGroups } = effective(byQ, mode);
+  return { g, q, mode, rows, eff, counted, effAllGroups };
+}
+function ranking(effRows, allRows) {
+  const m = new Map();
+  for (const r of effRows) {
+    const o = m.get(r.group) || { group: r.group, total: 0, n: 0, qs: new Set(), subs: 0, last: null };
+    o.total += r.score || 0; o.n++; o.qs.add(r.qno);
+    m.set(r.group, o);
+  }
+  for (const r of allRows) {
+    const o = m.get(r.group); if (!o) continue;
+    o.subs++; if (r.ts != null && (o.last == null || r.ts > o.last)) o.last = r.ts;
+  }
+  const list = [...m.values()].sort((a, b) => b.total - a.total || natCmp(a.group, b.group));
+  list.forEach(o => { o.rank = 1 + list.filter(x => x.total > o.total).length; });
+  return list;
+}
+function signCell(user, ans) {
+  if (!user) return '<span class="sign na">—</span>';
+  const t = user === '+' ? '＋' : '－';
+  if (!ans) return `<span class="sign">${t}</span>`;
+  return `<span class="sign ${user === ans ? 'ok' : 'bad'}" title="${user === ans ? '答對' : '答錯'}">${t}</span>`;
+}
+
+/* ---------- 畫面 ---------- */
+function render() {
+  if (!DATA) return;
+  const v = view();
+  renderBanner();
+  renderStats(v);
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === TAB)));
+  ({ rank: renderRank, detail: renderDetail, question: renderQuestion, matrix: renderMatrix })[TAB](v);
+}
+
+function renderBanner() {
+  const c = DATA.consistency;
+  if (c.ok) { $('#banner').innerHTML = ''; return; }
+  const items = c.diffs.slice(0, 8).map(d =>
+    `<li>第 ${esc(d.group)} 組 第 ${esc(d.qno)} 題 ${esc(d.score)} 分：${d.delta > 0 ? `Responses 多 ${d.delta} 筆` : `Scores 多 ${-d.delta} 筆`}</li>`).join('');
+  $('#banner').innerHTML = `<div class="banner">
+    <b>⚠️ Scores 與 Responses 不一致</b>（Responses ${c.resCount} 筆、Scores ${c.scoCount} 筆，共 ${c.diffTotal} 項差異）。
+    排行榜 API 讀的是 Scores，可能與本頁顯示不同；修改功能會暫停，直到兩邊一致。
+    <ul>${items}${c.diffTotal > 8 ? '<li>…</li>' : ''}</ul>
+    <button class="btn sm" id="btnRebuild" type="button">以 Responses 重建 Scores</button>
+  </div>`;
+  $('#btnRebuild').onclick = rebuild;
+}
+
+function renderStats(v) {
+  const pairs = new Set(v.rows.map(r => r.group + '|' + r.qno)).size;
+  const scored = v.eff.filter(r => r.score != null);
+  const avg = scored.length ? scored.reduce((s, r) => s + r.score, 0) / scored.length : null;
+  const groups = new Set(v.rows.map(r => r.group)).size;
+  $('#stats').innerHTML = [
+    ['作答筆數', v.rows.length, '所有送出紀錄'],
+    ['參與組數', groups, ''],
+    ['平均每題得分', fmtNum(avg), `滿分 ${maxScore()}`],
+    ['重複作答', v.rows.length - pairs, '同組同題的額外送出'],
+  ].map(([k, val, h]) => `<div class="stat"><div class="k">${k}</div><div class="v">${val}</div><div class="h">${h}</div></div>`).join('');
+}
+
+function renderRank(v) {
+  const list = ranking(v.effAllGroups, DATA.responses.filter(r => !v.q || r.qno === v.q))
+    .filter(o => !v.g || o.group === v.g);
+  if (!list.length) return $('#panel').innerHTML = '<div class="empty">目前沒有作答紀錄</div>';
+  $('#panel').innerHTML = `
+    <div class="panel-head"><h2>排行榜${v.q ? `｜第 ${esc(v.q)} 題` : ''}</h2>
+      <span class="hint">${$('#fMode').selectedOptions[0].text}</span></div>
+    <table class="cards"><thead><tr>
+      <th class="c">名次</th><th>組別</th><th class="num">總分</th><th class="num">作答題數</th>
+      <th class="num">送出次數</th><th class="num">平均每題</th><th>最近作答</th></tr></thead>
+    <tbody>${list.map(o => `<tr>
+      <td class="c" data-label="名次"><span class="rank ${o.rank <= 3 ? 'r' + o.rank : ''}">${o.rank}</span></td>
+      <td data-label="組別"><b>第 ${esc(o.group)} 組</b></td>
+      <td class="num" data-label="總分"><b>${fmtNum(o.total, 2)}</b></td>
+      <td class="num" data-label="作答題數">${o.qs.size}</td>
+      <td class="num" data-label="送出次數"><span>${o.subs}${o.subs > o.qs.size ? ' <span class="tag warn">含重複</span>' : ''}</span></td>
+      <td class="num" data-label="平均每題">${fmtNum(o.total / o.n)}</td>
+      <td data-label="最近作答">${fmtTime(o.last)}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function renderDetail(v) {
+  const rows = [...v.rows].sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0) || b.row - a.row);
+  if (!rows.length) return $('#panel').innerHTML = '<div class="empty">沒有符合條件的作答</div>';
+  const shown = rows.slice(0, detailLimit);
+  const locked = !DATA.consistency.ok;
+  $('#panel').innerHTML = `
+    <div class="panel-head"><h2>作答明細（${rows.length} 筆）</h2>
+      <span class="hint">綠色＝答對、紅色＝答錯（依目前 AnswerKey）</span></div>
+    <table class="cards"><thead><tr>
+      <th>時間</th><th>組別</th><th>題號</th>${MARKETS.map(([, n]) => `<th class="c">${n}</th>`).join('')}
+      <th class="num">分數</th><th>備註</th><th></th></tr></thead>
+    <tbody>${shown.map(r => {
+      const key = DATA.keyMap[r.qno]?.ans || {};
+      const counted = v.counted.has(r.row);
+      return `<tr class="${counted ? '' : 'muted-row'}">
+        <td data-label="時間">${fmtTime(r.ts)}</td>
+        <td data-label="組別">第 ${esc(r.group)} 組</td>
+        <td data-label="題號">第 ${esc(r.qno)} 題</td>
+        ${MARKETS.map(([m, n]) => `<td class="c" data-label="${n}">${signCell(r[m], key[m])}</td>`).join('')}
+        <td class="num" data-label="分數"><span><b>${r.score ?? '—'}</b>${counted ? '' : ' <span class="tag">不計分</span>'}</span></td>
+        <td data-label="備註">${esc(r.note) || '<span class="hint">—</span>'}</td>
+        <td data-label="操作"><div class="acts">
+          <button class="btn sm" data-edit="${r.row}" ${locked ? 'disabled' : ''}>修改</button>
+          <button class="btn sm danger" data-del="${r.row}" ${locked ? 'disabled' : ''}>刪除</button></div></td></tr>`;
+    }).join('')}</tbody></table>
+    ${rows.length > shown.length ? `<div class="more"><button class="btn" id="btnMore">顯示更多（還有 ${rows.length - shown.length} 筆）</button></div>` : ''}`;
+  const more = $('#btnMore'); if (more) more.onclick = () => { detailLimit += PAGE; render(); };
+}
+
+function renderQuestion(v) {
+  const by = new Map();
+  for (const r of v.eff) { if (!by.has(r.qno)) by.set(r.qno, []); by.get(r.qno).push(r); }
+  const qnos = [...by.keys()].sort(natCmp);
+  if (!qnos.length) return $('#panel').innerHTML = '<div class="empty">沒有符合條件的作答</div>';
+  const bar = p => p == null ? '<span class="hint">—</span>' :
+    `<div class="bar" title="${Math.round(p * 100)}%"><i style="width:${Math.round(p * 100)}%"></i></div><div class="pct">${Math.round(p * 100)}%</div>`;
+  $('#panel').innerHTML = `
+    <div class="panel-head"><h2>題目分析</h2><span class="hint">各市場答對率；可看出哪個市場最容易判斷錯誤</span></div>
+    <table class="cards"><thead><tr><th>題號</th><th>題目</th><th class="num">作答數</th><th class="num">平均</th>
+      ${MARKETS.map(([, n]) => `<th>${n}</th>`).join('')}</tr></thead>
+    <tbody>${qnos.map(q => {
+      const list = by.get(q), k = DATA.keyMap[q];
+      const sc = list.filter(r => r.score != null);
+      const avg = sc.length ? sc.reduce((s, r) => s + r.score, 0) / sc.length : null;
+      return `<tr>
+        <td data-label="題號"><b>第 ${esc(q)} 題</b></td>
+        <td class="full" data-label="題目"><div class="qtext">${k?.text ? `<details><summary>${esc(k.text)}</summary></details>` : '<span class="hint">（AnswerKey 找不到此題）</span>'}</div></td>
+        <td class="num" data-label="作答數">${list.length}</td>
+        <td class="num" data-label="平均"><b>${fmtNum(avg)}</b></td>
+        ${MARKETS.map(([m, n]) => {
+          const a = k?.ans?.[m];
+          const answered = list.filter(r => r[m]);
+          const p = a && answered.length ? answered.filter(r => r[m] === a).length / answered.length : null;
+          return `<td data-label="${n}${a ? `（正解 ${a === '+' ? '＋' : '－'}）` : ''}"><div>${bar(p)}</div></td>`;
+        }).join('')}</tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+function renderMatrix(v) {
+  const groups = [...new Set(v.eff.map(r => r.group))].sort(natCmp);
+  const qnos = [...new Set(v.eff.map(r => r.qno))].sort(natCmp);
+  if (!groups.length) return $('#panel').innerHTML = '<div class="empty">沒有符合條件的作答</div>';
+  const cell = new Map();
+  for (const r of v.eff) { const k = r.group + '|' + r.qno; cell.set(k, (cell.get(k) || 0) + (r.score || 0)); }
+  const ms = maxScore();
+  const heat = s => { const p = Math.max(0, Math.min(1, s / ms)); return `background: rgba(37,99,235,${(0.08 + p * 0.45).toFixed(2)})`; };
+  $('#panel').innerHTML = `
+    <div class="panel-head"><h2>成績總表（組別 × 題號）</h2><span class="hint">${$('#fMode').selectedOptions[0].text}；空白＝未作答</span></div>
+    <div class="scroll"><table class="matrix"><thead><tr><th>組別</th>${qnos.map(q => `<th class="c">Q${esc(q)}</th>`).join('')}<th class="num">總分</th></tr></thead>
+    <tbody>${groups.map(g => {
+      let total = 0;
+      const tds = qnos.map(q => {
+        const s = cell.get(g + '|' + q);
+        if (s == null) return '<td class="cell"></td>';
+        total += s;
+        return `<td class="cell" style="${heat(s)}">${fmtNum(s, 2)}</td>`;
+      }).join('');
+      return `<tr><td>第 ${esc(g)} 組</td>${tds}<td class="num"><b>${fmtNum(total, 2)}</b></td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+/* ---------- 操作 ---------- */
+let formMode = null, formRef = null;
+function openForm(mode, r) {
+  formMode = mode; formRef = r ? { row: r.row, ts: r.ts, group: r.group, qno: r.qno } : null;
+  $('#formTitle').textContent = mode === 'edit' ? '修改作答' : '補登成績';
+  $('#formHint').textContent = mode === 'edit'
+    ? `原紀錄：第 ${r.group} 組・第 ${r.qno} 題・${fmtFull(r.ts)}`
+    : '新增一筆成績到 Responses，Scores 會自動同步。';
+  $('#inGroup').value = r ? r.group : ($('#fGroup').value || '');
+  $('#inQno').value = r ? r.qno : ($('#fQno').value || '');
+  $('#inScore').value = r ? (r.score ?? '') : '';
+  $('#inNote').value = r ? (r.note || '') : '';
+  $('#formOk').textContent = mode === 'edit' ? '儲存' : '新增';
+  $('#dlgForm').returnValue = '';
+  $('#dlgForm').showModal();
+}
+$('#dlgForm').addEventListener('close', async () => {
+  if ($('#dlgForm').returnValue !== 'ok') return;
+  const data = { group: $('#inGroup').value.trim(), qno: $('#inQno').value.trim(), score: $('#inScore').value.trim(), note: $('#inNote').value.trim() };
+  try {
+    if (formMode === 'edit') { setData(await run('儲存中…', 'updateResponse', formRef, data)); toast('已更新'); }
+    else { setData(await run('新增中…', 'addManualEntry', data)); toast('已補登'); }
+  } catch (e) {}
+});
+
+$('#panel').addEventListener('click', async e => {
+  const ed = e.target.closest('[data-edit]'), del = e.target.closest('[data-del]');
+  const find = row => DATA.responses.find(r => r.row === Number(row));
+  if (ed) openForm('edit', find(ed.dataset.edit));
+  if (del) {
+    const r = find(del.dataset.del);
+    const ok = await confirmBox('刪除這筆作答？', `第 ${r.group} 組・第 ${r.qno} 題・${r.score ?? '—'} 分\n${fmtFull(r.ts)}\n\nResponses 與 Scores 都會一起刪除，無法復原。`, '刪除', true);
+    if (!ok) return;
+    try { setData(await run('刪除中…', 'deleteResponse', { row: r.row, ts: r.ts, group: r.group, qno: r.qno })); toast('已刪除'); } catch (e) {}
+  }
+});
+
+async function regrade() {
+  if (!DATA.consistency.ok) return toast('請先處理上方的 Scores 不一致問題', false);
+  const ok = await confirmBox('依目前 AnswerKey 重新批改？',
+    '適用於修改過正解之後。系統會用 AnswerKey 重新計算每筆作答的分數，並同步 Scores。\n\n• 手動補登（沒有五市場答案）的紀錄不會變動\n• 有變動時會先備份 Responses 分頁', '重新批改');
+  if (!ok) return;
+  try {
+    const r = await run('批改中…', 'regradeAll');
+    setData(r.data);
+    toast(r.changed ? `已重新批改，${r.changed} 筆分數有變動` : '所有分數都正確，沒有變動');
+  } catch (e) {}
+}
+async function rebuild() {
+  const ok = await confirmBox('以 Responses 重建 Scores？',
+    'Scores 會被清空，再依 Responses 的內容重新產生，之後排行榜會與本頁一致。\n\n舊的 Scores 會先備份成新分頁。若有人「只在 Scores」手動加過分，那些分數不會被保留，請先確認。', '重建');
+  if (!ok) return;
+  try { setData(await run('重建中…', 'rebuildScores')); toast('Scores 已重建'); } catch (e) {}
+}
+
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => { TAB = t.dataset.tab; render(); }));
+['#fGroup', '#fQno', '#fMode'].forEach(s => $(s).addEventListener('change', () => { detailLimit = PAGE; render(); }));
+$('#btnRefresh').onclick = load;
+$('#btnAdd').onclick = () => {
+  if (!DATA?.consistency.ok) return toast('請先處理上方的 Scores 不一致問題', false);
+  openForm('add');
+};
+$('#btnRegrade').onclick = regrade;
+
+load();
+</script>
+</body>
+</html>
