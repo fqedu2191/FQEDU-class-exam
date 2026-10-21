@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#f6f7fb" />
+  <title>本週挑戰｜作答系統</title>
+  <style>
+    :root {
+      --radius: 14px;
+      --shadow: 0 10px 30px rgba(0,0,0,.08);
+      --ink: #111827;
+      --muted: #667085;
+      --line: #e5e7eb;
+      --bg: #f6f7fb;
+      --gutter: clamp(12px, 4vw, 32px);
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      padding: var(--gutter);
+      padding-left: max(var(--gutter), env(safe-area-inset-left));
+      padding-right: max(var(--gutter), env(safe-area-inset-right));
+      padding-bottom: max(var(--gutter), env(safe-area-inset-bottom));
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      background: var(--bg);
+      color: #222;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; }
+    .card {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(16px, 4vw, 24px);
+    }
+    .card + .card { margin-top: 18px; }
+    h1 { margin: 0 0 8px; font-size: clamp(22px, 5vw, 28px); }
+    .sub { color: var(--muted); margin: 0 0 20px; }
+    label, .field-label { display: block; font-weight: 600; margin: 10px 0 6px; }
+    select, input {
+      width: 100%;
+      min-height: 48px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 16px; /* 16px 以上可避免 iOS 點選時自動放大 */
+      background: #fff;
+      color: inherit;
+    }
+    select:focus, input:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+    /* 組別／題號：寬螢幕兩欄，窄螢幕自動變一欄 */
+    .row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+      gap: 0 12px;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 48px; padding: 12px 18px;
+      border: 0; border-radius: 10px;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+      touch-action: manipulation;
+    }
+    .btn.primary { background: var(--ink); color: #fff; }
+    .btn.secondary { background: #eef2f7; color: var(--ink); }
+    .btn[disabled] { opacity: .6; cursor: not-allowed; }
+    .actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .hidden { display: none !important; }
+
+    .qbox {
+      padding: 14px; border: 1px solid #eef0f4; background: #fafbff;
+      border-radius: 10px; margin-top: 8px;
+      white-space: pre-wrap; overflow-wrap: anywhere;
+      font-size: 16px; line-height: 1.75;
+    }
+
+    /* 五個市場 */
+    .markets {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+      gap: 12px; margin-top: 16px;
+    }
+    .market .field-label { margin-top: 0; }
+    .radio-group { display: flex; gap: 8px; }
+    .chip {
+      flex: 1 1 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 44px; padding: 8px 12px;
+      border: 1px solid #d1d5db; background: #fff; border-radius: 999px;
+      cursor: pointer; user-select: none; -webkit-user-select: none;
+      font-weight: 600; white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .chip input { display: none; }
+    .chip.active { border-color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); background: #f3f4f6; }
+
+    .note { font-size: 13px; color: #6b7280; margin-top: 12px; }
+    .alert { margin-top: 12px; padding: 12px 14px; border-radius: 10px; overflow-wrap: anywhere; }
+    .alert.ok { background: #effaf1; border: 1px solid #b7ebc6; color: #166534; }
+    .alert.err { background: #fff1f0; border: 1px solid #ffcdc7; color: #a8071a; }
+    .badge {
+      display: inline-block; padding: 4px 12px; border-radius: 999px;
+      background: #eef2ff; color: #334155; font-weight: 600; font-size: 13px;
+    }
+
+    /* 手機：市場改成「名稱在左、按鈕在右」的列，按鈕全寬 */
+    @media (max-width: 600px) {
+      .markets { gap: 0; }
+      .market {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        padding: 12px 0; border-bottom: 1px solid #f0f1f4;
+      }
+      .market:last-child { border-bottom: 0; }
+      .market .field-label { margin: 0; flex: 0 0 auto; min-width: 4.5em; }
+      .market .radio-group { flex: 1 1 auto; max-width: 260px; }
+      .actions .btn { flex: 1 1 100%; }
+    }
+
+    /* 載入中遮罩 */
+    #spinner { position: fixed; inset: 0; z-index: 9999; display: none; }
+    .spinner-overlay {
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,0.7);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .spinner {
+      width: 50px; height: 50px;
+      border: 6px solid #cbd5e1; border-top-color: #2563eb; border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <!-- Step 1 -->
+  <section id="step1" class="card">
+    <h1>本週挑戰</h1>
+    <p class="sub">請先選擇 <b>組別</b> 與輸入 <b>第幾題</b>，送出後才會顯示題目與作答區。</p>
+
+    <div class="row">
+      <div>
+        <label for="group">請填組別</label>
+        <select id="group" required>
+          <option value="" selected disabled>— 請選擇組別 —</option>
+        </select>
+      </div>
+      <div>
+        <label for="qno">本週挑戰｜請輸入第幾題（1–52）</label>
+        <input id="qno" type="number" inputmode="numeric" pattern="[0-9]*" min="1" max="52" step="1" placeholder="例如：3" required />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="btnFetch" class="btn primary">送出並顯示題目</button>
+      <button id="btnReset1" class="btn secondary" type="button">清除</button>
+    </div>
+    <div id="msg1" aria-live="polite"></div>
+  </section>
+
+  <!-- Step 2 -->
+  <section id="step2" class="card hidden">
+    <span class="badge" id="badgeInfo">組別 − 題號</span>
+
+    <div class="field-label" style="margin-top:14px;">題目內容</div>
+    <div id="qbox" class="qbox" aria-live="polite">（載入中…）</div>
+
+    <!-- 五市場 ± 選擇 -->
+    <div class="markets">
+      <div class="market"><div class="field-label">股市</div><div id="optStock" class="radio-group" role="radiogroup" aria-label="股市"></div></div>
+      <div class="market"><div class="field-label">債市</div><div id="optBond" class="radio-group" role="radiogroup" aria-label="債市"></div></div>
+      <div class="market"><div class="field-label">美元指數</div><div id="optFx" class="radio-group" role="radiogroup" aria-label="美元指數"></div></div>
+      <div class="market"><div class="field-label">原物料</div><div id="optCom" class="radio-group" role="radiogroup" aria-label="原物料"></div></div>
+      <div class="market"><div class="field-label">房地產</div><div id="optRe" class="radio-group" role="radiogroup" aria-label="房地產"></div></div>
+    </div>
+
+    <div class="actions">
+      <button id="btnSubmit" class="btn primary">送出作答</button>
+      <button id="btnBack" class="btn secondary" type="button">返回上一步</button>
+    </div>
+    <div id="msg2" aria-live="polite"></div>
+    <p class="note">系統於 <b>後端</b> 批改並記錄分數；前台不顯示正解與分數。</p>
+  </section>
+</div>
+
+<script>
+/* ===== 系統設定 ===== */
+const GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyBhvNpUrTzfbWTgodkTuK05aDZnwY2v01sQPRBHZLP-Uf5lGnck7wxdDx1CTXExgIe/exec';
+const MAX_GROUP = 100, MAX_QNO = 52;
+
+/* ===== 工具函式 ===== */
+const $ = id => document.getElementById(id);
+const setHidden = (id, b)=> $(id).classList.toggle('hidden', b);
+function toast(id, text, ok=true){
+  $(id).innerHTML = text ? `<div class="alert ${ok?'ok':'err'}">${text}</div>` : '';
+}
+function showStep(n){
+  setHidden('step1', n !== 1);
+  setHidden('step2', n !== 2);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ===== 狀態變數 ===== */
+const state = { fetching:false, submitting:false };
+
+/* ===== 初始化組別與選項 ===== */
+(function init(){
+  const sel=$('group');
+  for(let i=1;i<=MAX_GROUP;i++){
+    const o=document.createElement('option');
+    o.value=String(i); o.textContent=`第 ${i} 組`; sel.appendChild(o);
+  }
+  buildChips($('optStock'),'stock');
+  buildChips($('optBond'),'bond');
+  buildChips($('optFx'),'fx');
+  buildChips($('optCom'),'com');
+  buildChips($('optRe'),'re');
+})();
+
+/* ===== 建立 ± 按鈕 ===== */
+function buildChips(container, name){
+  const opts=[{v:'+',t:'正面(＋)'},{v:'-',t:'負面(－)'}];
+  container.innerHTML='';
+  opts.forEach(o=>{
+    const chip=document.createElement('label');
+    chip.className='chip';
+    chip.innerHTML=`<input type="radio" name="${name}" value="${o.v}"><span>${o.t}</span>`;
+    chip.addEventListener('click',()=>{
+      [...container.querySelectorAll('.chip')].forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      chip.querySelector('input').checked=true;
+    });
+    container.appendChild(chip);
+  });
+}
+const getChip = c => (c.querySelector('input:checked')||{}).value||'';
+const clearChips = c => {
+  c.querySelectorAll('input').forEach(i=>i.checked=false);
+  c.querySelectorAll('.chip').forEach(ch=>ch.classList.remove('active'));
+};
+
+/* ===== Loading Spinner ===== */
+function showLoading(show=true,msg='載入中…'){
+  let el=$('spinner');
+  if(!el){
+    el=document.createElement('div');
+    el.id='spinner';
+    el.innerHTML=`<div class="spinner-overlay"><div class="spinner"></div><div id="spinnerMsg" style="margin-top:8px;color:#374151;"></div></div>`;
+    document.body.appendChild(el);
+  }
+  $('spinnerMsg').textContent = msg;
+  el.style.display = show ? 'block':'none';
+}
+
+/* ===== 共用 POST JSON ===== */
+async function postJSON(url,payload){
+  const res = await fetch(url,{method:'POST',body:JSON.stringify(payload)});
+  const raw = await res.text();
+  try{ return JSON.parse(raw); }
+  catch{ throw new Error('後端未回傳 JSON：'+raw.slice(0,100)); }
+}
+
+/* ===== 顯示題目 ===== */
+$('btnFetch').addEventListener('click', async ()=>{
+  if(state.fetching) return toast('msg1','⚠️ 正在載入，請稍候…',false);
+  toast('msg1','');
+  const group=$('group').value;
+  const qnoN=Number(($('qno').value||'').trim());
+  if(!group) return toast('msg1','請先選擇組別。',false);
+  if(!qnoN || qnoN<1 || qnoN>MAX_QNO) return toast('msg1','題號必須 1–52。',false);
+
+  try{
+    state.fetching = true;
+    $('btnFetch').disabled = true;
+    showLoading(true);
+    const data=await postJSON(GAS_ENDPOINT,{action:'requestQuestion',payload:{group,qno:qnoN}});
+    if(!data.ok) throw new Error(data.message||'取得題目失敗');
+    $('qbox').textContent=data.question?.text||`第 ${qnoN} 題`;
+    $('badgeInfo').textContent=`第 ${group} 組｜第 ${qnoN} 題`;
+    window.__ctx={group:String(group),qno:String(qnoN)};
+    ['optStock','optBond','optFx','optCom','optRe'].forEach(id=>clearChips($(id)));
+    toast('msg2','');
+    showStep(2);
+    toast('msg1','✅ 題目載入成功！',true);
+  }catch(err){
+    toast('msg1','⚠️ '+(err.message||'連線失敗'),false);
+  }finally{
+    state.fetching = false;
+    $('btnFetch').disabled = false;
+    showLoading(false);
+  }
+});
+
+/* ===== 清除 & 返回 ===== */
+$('btnReset1').addEventListener('click',()=>{
+  $('group').value=''; $('qno').value='';
+  toast('msg1','欄位已清除。',true);
+});
+$('btnBack').addEventListener('click',()=>{
+  toast('msg2','');
+  showStep(1);
+});
+
+/* ===== 送出作答 ===== */
+$('btnSubmit').addEventListener('click', async ()=>{
+  if(state.submitting) return toast('msg2','⚠️ 正在送出中，請稍候…',false);
+  toast('msg2','');
+  const stock=getChip($('optStock')), bond=getChip($('optBond')),
+        fx=getChip($('optFx')), com=getChip($('optCom')), re=getChip($('optRe'));
+  if(!stock||!bond||!fx||!com||!re) return toast('msg2','請完成五個市場的 ± 選擇。',false);
+
+  try{
+    state.submitting = true;
+    $('btnSubmit').disabled = true;
+    showLoading(true,'送出中…');
+    const {group,qno}=window.__ctx||{};
+    const payload={group,qno,stock,bond,fx,com,re};
+    const data=await postJSON(GAS_ENDPOINT,{action:'submitAnswer',payload});
+    if(!data.ok) throw new Error(data.message||'送出失敗');
+    toast('msg2','✅ 已送出，感謝作答！',true);
+  }catch(err){
+    toast('msg2','⚠️ '+(err.message||'連線失敗'),false);
+  }finally{
+    state.submitting = false;
+    $('btnSubmit').disabled = false;
+    showLoading(false);
+  }
+});
+</script>
+</body>
+</html>
