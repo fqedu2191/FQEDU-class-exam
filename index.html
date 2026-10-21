@@ -78,14 +78,15 @@
       font-size: 16px; line-height: 1.75;
     }
 
-    /* 五個市場 */
-    .markets {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
-      gap: 12px; margin-top: 16px;
+    /* 五個市場：任何寬度都一列一個，名稱在左、按鈕在右 */
+    .markets { display: flex; flex-direction: column; margin-top: 16px; }
+    .market {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid #f0f1f4;
     }
-    .market .field-label { margin-top: 0; }
-    .radio-group { display: flex; gap: 8px; }
+    .market:last-child { border-bottom: 0; }
+    .market .field-label { margin: 0; flex: 0 0 auto; min-width: 4.5em; }
+    .radio-group { display: flex; gap: 8px; flex: 1 1 auto; max-width: 320px; }
     .chip {
       flex: 1 1 0;
       display: inline-flex; align-items: center; justify-content: center;
@@ -107,16 +108,8 @@
       background: #eef2ff; color: #334155; font-weight: 600; font-size: 13px;
     }
 
-    /* 手機：市場改成「名稱在左、按鈕在右」的列，按鈕全寬 */
+    /* 手機：按鈕全寬 */
     @media (max-width: 600px) {
-      .markets { gap: 0; }
-      .market {
-        display: flex; align-items: center; justify-content: space-between; gap: 12px;
-        padding: 12px 0; border-bottom: 1px solid #f0f1f4;
-      }
-      .market:last-child { border-bottom: 0; }
-      .market .field-label { margin: 0; flex: 0 0 auto; min-width: 4.5em; }
-      .market .radio-group { flex: 1 1 auto; max-width: 260px; }
       .actions .btn { flex: 1 1 100%; }
     }
 
